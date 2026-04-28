@@ -1,0 +1,173 @@
+# Credit Card Benefits Tracker — Cursor Rules
+# Stack: Next.js 14 (App Router) · TypeScript · Tailwind CSS · Supabase
+
+## Project overview
+A clean, minimal web app where users log in via Google and manually track
+which credit card benefits they have used and which are still pending.
+Each user has their own dashboard with their own cards and benefit states.
+
+---
+
+## Core rules (always follow these)
+
+- Use TypeScript for every file. Never use plain .js files.
+- Use Tailwind CSS for all styling. Never write custom CSS files unless absolutely necessary.
+- Use the Next.js App Router (app/ directory). Never use the Pages Router.
+- Use functional components with hooks only. Never use class components.
+- Keep components small and focused. If a component exceeds ~100 lines, split it.
+- Always handle loading states, error states, and empty states in every component.
+- Never hardcode data. Always pull from Supabase or pass via props.
+- Always use environment variables for keys. Never commit secrets.
+
+---
+
+## Folder structure to follow
+
+app/
+  layout.tsx          # Root layout with auth provider
+  page.tsx            # Landing / login page
+  dashboard/
+    page.tsx          # Main user dashboard (list of cards)
+  cards/
+    [id]/
+      page.tsx        # Individual card detail + benefits checklist
+components/
+  ui/                 # Reusable primitives (Button, Card, Badge, Modal)
+  cards/              # Card-specific components (CardTile, BenefitRow, AddCardForm)
+  layout/             # Header, Sidebar, PageWrapper
+lib/
+  supabase/
+    client.ts         # Browser-side Supabase client
+    server.ts         # Server-side Supabase client (for Server Components)
+  types.ts            # All shared TypeScript types and interfaces
+  utils.ts            # Helper functions
+hooks/
+  useCards.ts         # Custom hook for fetching and mutating user's cards
+  useBenefits.ts      # Custom hook for benefit state (used/pending)
+
+---
+
+## Supabase rules
+
+- Always use the server-side Supabase client in Server Components and API routes.
+- Always use the browser-side Supabase client in Client Components.
+- Every database query must filter by the authenticated user's ID (auth.uid()).
+  Never return data across users.
+- Use Row Level Security (RLS) in Supabase. Assume it is always enabled.
+- Use Supabase Auth for Google OAuth. Never build custom auth.
+
+---
+
+## Database schema (reference this when writing queries)
+
+Table: cards
+  id          uuid primary key
+  user_id     uuid references auth.users
+  name        text               -- e.g. "Chase Sapphire Reserve"
+  issuer      text               -- e.g. "Chase"
+  network     text               -- e.g. "Visa"
+  annual_fee  numeric
+  created_at  timestamptz
+
+Table: benefits
+  id              uuid primary key
+  card_id         uuid references cards
+  name            text           -- e.g. "$300 Travel Credit"
+  description     text
+  value           numeric        -- dollar value of the benefit
+  period          text           -- "annual" | "monthly" | "quarterly"
+  category        text           -- "travel" | "dining" | "entertainment" | "other"
+  reset_date      date           -- when the benefit resets
+
+Table: benefit_usage
+  id            uuid primary key
+  benefit_id    uuid references benefits
+  user_id       uuid references auth.users
+  used          boolean default false
+  used_at       timestamptz
+  notes         text
+
+---
+
+## TypeScript types to use
+
+Always import from lib/types.ts. The core types are:
+
+  type Card = {
+    id: string
+    user_id: string
+    name: string
+    issuer: string
+    network: string
+    annual_fee: number
+    created_at: string
+    benefits?: Benefit[]
+  }
+
+  type Benefit = {
+    id: string
+    card_id: string
+    name: string
+    description: string
+    value: number
+    period: 'annual' | 'monthly' | 'quarterly'
+    category: 'travel' | 'dining' | 'entertainment' | 'other'
+    reset_date: string
+    usage?: BenefitUsage
+  }
+
+  type BenefitUsage = {
+    id: string
+    benefit_id: string
+    user_id: string
+    used: boolean
+    used_at: string | null
+    notes: string | null
+  }
+
+---
+
+## UI & design rules
+
+- Style: clean, minimal, professional. Think Linear or Notion.
+- Color palette: white backgrounds, neutral grays, one accent color (use slate + indigo).
+- Typography: use the default Next.js/Tailwind font stack (Inter via next/font).
+- Spacing: generous padding. Prefer p-6 or p-8 inside cards. Gap of 4-6 between items.
+- Cards: use rounded-xl with a subtle border (border border-slate-200) and soft shadow (shadow-sm).
+- Buttons: primary = indigo-600 with white text. Secondary = ghost/outline style.
+- Badges: used benefits = green (bg-green-100 text-green-700). Pending = amber (bg-amber-100 text-amber-700).
+- Never use more than 2 font weights in one view (regular + semibold is enough).
+- Always support mobile layout. Use responsive Tailwind classes (sm:, md:, lg:).
+- Dark mode is NOT required for v1. Keep it light-only for now.
+
+---
+
+## Component patterns
+
+When building a list of benefits inside a card, use this pattern:
+- Each benefit is a row with: checkbox on left, benefit name + description in middle, value badge on right.
+- Clicking the checkbox calls a Supabase mutation to toggle benefit_usage.used.
+- Optimistically update the UI before the server responds.
+
+When building the card grid on the dashboard:
+- Show each card as a tile with: card name, issuer, annual fee, and a mini progress bar
+  showing X/Y benefits used.
+- Clicking a tile navigates to /cards/[id].
+
+When building forms (add card, add benefit):
+- Use controlled inputs with useState.
+- Validate before submitting.
+- Show a loading spinner on the submit button while the Supabase call is in flight.
+- Show a success or error toast after submission.
+
+---
+
+## What NOT to do
+
+- Do not use Redux or any global state library. Supabase + React state is enough.
+- Do not use React Query or SWR for v1. Keep data fetching simple.
+- Do not use any UI component libraries (MUI, Chakra, shadcn) unless explicitly asked.
+  Build components from scratch with Tailwind.
+- Do not use the Pages Router or getServerSideProps.
+- Do not store sensitive card data (card numbers, CVVs). This app is benefits-only.
+- Do not skip loading and error states. Every async operation must have them.
