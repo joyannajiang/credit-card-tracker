@@ -38,20 +38,14 @@ export function RemainingBenefitsGrid({ initialTiles }: RemainingBenefitsGridPro
       return;
     }
 
-    let removedTile: RemainingBenefitTile | null = null;
-    let removedIndex = -1;
-
-    setTiles((prev) => {
-      removedIndex = prev.findIndex((tile) => tile.usageId === usageId);
-      if (removedIndex === -1) {
-        return prev;
-      }
-      removedTile = prev[removedIndex];
-      return prev.filter((tile) => tile.usageId !== usageId);
-    });
-    if (removedTile) {
-      emitAmountSavedAdjust(removedTile.value);
+    const removedIndex = tiles.findIndex((tile) => tile.usageId === usageId);
+    if (removedIndex === -1) {
+      return;
     }
+    const removedTile: RemainingBenefitTile = tiles[removedIndex];
+
+    setTiles((prev) => prev.filter((tile) => tile.usageId !== usageId));
+    emitAmountSavedAdjust(removedTile.value);
 
     setPendingIds((prev) => new Set(prev).add(usageId));
 
@@ -70,20 +64,20 @@ export function RemainingBenefitsGrid({ initialTiles }: RemainingBenefitsGridPro
       if (!response.ok) {
         const payload = (await response.json()) as ToggleResponse;
         console.error(payload.error ?? "Unable to mark benefit as used.");
-        if (removedTile && removedIndex >= 0) {
+        if (removedIndex >= 0) {
           setTiles((prev) => {
             const next = [...prev];
-            next.splice(Math.min(removedIndex, next.length), 0, removedTile as RemainingBenefitTile);
+            next.splice(Math.min(removedIndex, next.length), 0, removedTile);
             return next;
           });
           emitAmountSavedAdjust(-removedTile.value);
         }
       }
     } catch {
-      if (removedTile && removedIndex >= 0) {
+      if (removedIndex >= 0) {
         setTiles((prev) => {
           const next = [...prev];
-          next.splice(Math.min(removedIndex, next.length), 0, removedTile as RemainingBenefitTile);
+          next.splice(Math.min(removedIndex, next.length), 0, removedTile);
           return next;
         });
         emitAmountSavedAdjust(-removedTile.value);
