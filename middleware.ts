@@ -60,5 +60,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    /*
+     * Avoid running middleware on `/auth/callback`: OAuth must hit the route handler
+     * directly (some Edge + routing setups behave badly otherwise).
+     * Also skip `api` routes — they authenticate via cookies/RSC as needed.
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|auth/callback).*)",
+  ],
 };

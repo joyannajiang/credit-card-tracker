@@ -13,8 +13,7 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     const supabase = createClient();
-    const redirectTo =
-      "https://credit-card-tracker-5o19cgyuk-joyannas-projects.vercel.app/auth/callback";
+    const redirectTo = "https://credit-card-tracker-sigma.vercel.app/auth/callback";
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
